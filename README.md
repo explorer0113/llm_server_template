@@ -1,1 +1,1 @@
-# Langserve tempalte
+# Langserve template

@@ -1,0 +1,65 @@
+name: CI + Docker Build, Push, Git Tag
+
+on:
+  push:
+    branches: [main]
+
+env:
+  IMAGE_NAME: ghcr.io/<YOUR_GITHUB_USERNAME>/llm-server-template
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install Poetry
+      run: |
+        pip install poetry
+        poetry config virtualenvs.in-project true
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Check code format (black)
+      run: poetry run black --check .
+
+    - name: Check import order (isort)
+      run: poetry run isort --check-only .
+
+    - name: Static type check (mypy)
+      run: poetry run mypy .
+
+    - name: Run tests (pytest)
+      run: poetry run pytest
+
+    - name: Log in to GitHub Container Registry (GHCR)
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Docker image
+      run: |
+        docker build -t $IMAGE_NAME:${{ github.sha }} .
+        docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
+
+    - name: Push Docker images
+      run: |
+        docker push $IMAGE_NAME:${{ github.sha }}
+        docker push $IMAGE_NAME:latest
+
+    - name: Create and push git tag
+      run: |
+        git config user.name "${{ github.actor }}"
+        git config user.email "${{ github.actor }}@users.noreply.github.com"
+        git tag build-${GITHUB_SHA::7}
+        git push origin build-${GITHUB_SHA::7}

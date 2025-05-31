@@ -1,0 +1,23 @@
+name: CD - DEV-Release Deployment
+
+on:
+  push:
+    branches: main
+
+jobs:
+  trigger-remote-deployment:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Trigger remote repository workflow
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.REPO_ACCESS_TOKEN }}
+        repository: other-org/helm-deployment-repo
+        event-type: helm-chart-update
+        client-payload: |
+          {
+            "project": "llm-server-template",
+            "tag": "${{ github.event.release.tag_name }}",
+            "environment": "staging"
+          }
